@@ -1,9 +1,19 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { body, param, query, validationResult } = require("express-validator");
 const Booking = require("../models/Booking");
 const { sendBookingEmails } = require("../email");
 
 const router = express.Router();
+
+// ── Rate limiter — applies ONLY to creating new bookings (POST /) ─────────────
+// This stops customers from spamming the public booking form, without
+// affecting the admin dashboard's GET requests (list, stats, single booking).
+const bookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: "Too many booking requests. Please call us at +91 7402233588." },
+});
 
 // ── Validation rules ──────────────────────────────────────────────────────────
 const bookingValidation = [
@@ -33,7 +43,7 @@ const validate = (req, res, next) => {
 };
 
 // ── POST /api/bookings — Create booking ───────────────────────────────────────
-router.post("/", bookingValidation, validate, async (req, res, next) => {
+router.post("/", bookingLimiter, bookingValidation, validate, async (req, res, next) => {
   try {
     const { name, mobile, pickup, destination, vehicle, trip_type, travel_date, message } = req.body;
 
