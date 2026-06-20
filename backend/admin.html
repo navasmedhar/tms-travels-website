@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMS Travels — Admin Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #1a56db;
+      --orange: #f97316;
+      --dark: #0d1b2a;
+      --muted: #5a6e8a;
+      --bg: #f0f4ff;
+      --card: #ffffff;
+      --border: rgba(26,86,219,0.12);
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--dark), #1a3a6e);
+      color: white;
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--orange));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px; color: white;
+    }
+    .logo-text { font-weight: 700; font-size: 16px; }
+    .logo-sub { font-size: 11px; color: rgba(255,255,255,0.6); }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    #api-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: rgba(255,255,255,0.7);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #6b7280; transition: background 0.3s;
+    }
+    .dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.offline { background: var(--red); }
+
+    /* ── Layout ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--dark); }
+    .stat-value.blue { color: var(--blue); }
+    .stat-value.orange { color: var(--orange); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .toolbar h2 { font-size: 18px; font-weight: 700; flex: 1; }
+
+    .filter-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    select, input[type="date"] {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 13px;
+      color: var(--dark);
+      outline: none;
+      cursor: pointer;
+    }
+    select:focus, input[type="date"]:focus { border-color: var(--blue); }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-orange { background: var(--orange); color: white; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--bg); color: var(--dark); }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--bg); }
+    th {
+      text-align: left; padding: 12px 14px;
+      font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 13px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbff; }
+
+    .booking._id { font-size: 11px; color: var(--muted); }
+    .customer-name { font-weight: 600; color: var(--dark); }
+    .customer-phone { font-size: 12px; color: var(--blue); }
+    .route { font-size: 12px; color: var(--muted); }
+    .route strong { color: var(--dark); font-weight: 500; }
+    .vehicle-tag {
+      display: inline-block;
+      padding: 2px 8px; border-radius: 20px;
+      background: #e8f0fe; color: var(--blue);
+      font-size: 11px; font-weight: 600;
+    }
+    .date-cell { font-size: 12px; font-weight: 500; }
+
+    /* Status badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .badge.pending   { background: #fef9c3; color: #b45309; }
+    .badge.confirmed { background: #dcfce7; color: #15803d; }
+    .badge.completed { background: #e0e7ff; color: #4338ca; }
+    .badge.cancelled { background: #fee2e2; color: #b91c1c; }
+
+    /* Status select in table */
+    .status-select {
+      padding: 4px 8px; border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; outline: none;
+      background: white;
+    }
+
+    /* ── Empty / Loading states ── */
+    .state-row td {
+      text-align: center; padding: 48px;
+      color: var(--muted); font-size: 14px;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid rgba(26,86,219,0.15);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 12px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      color: white; z-index: 999;
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { background: var(--green); }
+    #toast.error   { background: var(--red); }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--muted);
+    }
+    .page-btns { display: flex; gap: 6px; }
+
+    /* ── Detail Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: white; border-radius: 16px;
+      width: 100%; max-width: 500px;
+      padding: 28px;
+      transform: scale(0.95); transition: transform 0.2s;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .modal-header h3 { font-size: 18px; font-weight: 700; }
+    .close-btn {
+      width: 32px; height: 32px; border-radius: 8px;
+      border: 1px solid var(--border); background: white;
+      cursor: pointer; font-size: 18px; color: var(--muted);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .close-btn:hover { background: var(--bg); }
+    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--muted); }
+    .detail-value { font-weight: 500; text-align: right; max-width: 60%; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      table { display: block; overflow-x: auto; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .filter-group { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">TMS</div>
+    <div>
+      <div class="logo-text">TMS Travels</div>
+      <div class="logo-sub">Admin Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="api-status">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">Connecting…</span>
+    </div>
+    <button class="btn btn-orange btn-sm" onclick="loadBookings()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Bookings</div>
+      <div class="stat-value blue" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value orange" id="stat-pending">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Confirmed</div>
+      <div class="stat-value green" id="stat-confirmed">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value blue" id="stat-completed">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Cancelled</div>
+      <div class="stat-value red" id="stat-cancelled">—</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <h2>📋 Bookings</h2>
+    <div class="filter-group">
+      <select id="filter-status" onchange="applyFilters()">
+        <option value="">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+      <input type="date" id="filter-date" onchange="applyFilters()" title="Filter by travel date" />
+      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Clear</button>
+      <button class="btn btn-primary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Route</th>
+          <th>Vehicle</th>
+          <th>Travel Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="bookings-tbody">
+        <tr class="state-row"><td colspan="7">
+          <div class="spinner"></div>
+          Loading bookings…
+        </td></tr>
+      </tbody>
+    </table>
+    <div class="pagination">
+      <span id="page-info">—</span>
+      <div class="page-btns">
+        <button class="btn btn-ghost btn-sm" id="btn-prev" onclick="changePage(-1)">← Prev</button>
+        <button class="btn btn-ghost btn-sm" id="btn-next" onclick="changePage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Booking Details</h3>
+      <button class="close-btn" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = 'http://localhost:5000';
+  let allBookings = [];
+  let currentPage = 1;
+  const perPage = 15;
+  let filteredBookings = [];
+
+  // ── API Status ──────────────────────────────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const r = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(3000) });
+      const ok = r.ok;
+      document.getElementById('status-dot').className = `dot ${ok ? 'online' : 'offline'}`;
+      document.getElementById('status-text').textContent = ok ? 'API Online' : 'API Error';
+    } catch {
+      document.getElementById('status-dot').className = 'dot offline';
+      document.getElementById('status-text').textContent = 'API Offline';
+    }
+  }
+
+  // ── Load Bookings ───────────────────────────────────────────────────────────
+  async function loadBookings() {
+    showLoading();
+    try {
+      const [bookingsRes, statsRes] = await Promise.all([
+        fetch(`${API}/api/bookings?limit=500&page=1`),
+        fetch(`${API}/api/bookings/stats`),
+      ]);
+      const data  = await bookingsRes.json();
+      const sData = await statsRes.json();
+      if (!data.success) throw new Error(data.message);
+      allBookings = data.bookings;
+      if (sData.success) renderStats(sData.stats);
+      else computeStats(allBookings);
+      applyFilters();
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  function renderStats(s) {
+    document.getElementById('stat-total').textContent     = s.total     || 0;
+    document.getElementById('stat-pending').textContent   = s.pending   || 0;
+    document.getElementById('stat-confirmed').textContent = s.confirmed || 0;
+    document.getElementById('stat-completed').textContent = s.completed || 0;
+    document.getElementById('stat-cancelled').textContent = s.cancelled || 0;
+  }
+
+  function computeStats(bookings) {
+    const count = (s) => bookings.filter(b => b.status === s).length;
+    document.getElementById('stat-total').textContent     = bookings.length;
+    document.getElementById('stat-pending').textContent   = count('pending');
+    document.getElementById('stat-confirmed').textContent = count('confirmed');
+    document.getElementById('stat-completed').textContent = count('completed');
+    document.getElementById('stat-cancelled').textContent = count('cancelled');
+  }
+
+  function applyFilters() {
+    const status = document.getElementById('filter-status').value;
+    const date   = document.getElementById('filter-date').value;
+    filteredBookings = allBookings.filter(b => {
+      if (status && b.status !== status) return false;
+      if (date && b.travel_date !== date) return false;
+      return true;
+    });
+    currentPage = 1;
+    renderTable();
+  }
+
+  function clearFilters() {
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-date').value = '';
+    applyFilters();
+  }
+
+  function changePage(dir) {
+    const maxPage = Math.ceil(filteredBookings.length / perPage);
+    currentPage = Math.max(1, Math.min(maxPage, currentPage + dir));
+    renderTable();
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  function renderTable() {
+    const tbody = document.getElementById('bookings-tbody');
+    const total = filteredBookings.length;
+    const maxPage = Math.max(1, Math.ceil(total / perPage));
+    const start = (currentPage - 1) * perPage;
+    const page  = filteredBookings.slice(start, start + perPage);
+
+    document.getElementById('page-info').textContent =
+      total === 0 ? 'No bookings' : `Showing ${start + 1}–${Math.min(start + perPage, total)} of ${total}`;
+    document.getElementById('btn-prev').disabled = currentPage <= 1;
+    document.getElementById('btn-next').disabled = currentPage >= maxPage;
+
+    if (page.length === 0) {
+      tbody.innerHTML = `<tr class="state-row"><td colspan="7">No bookings found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = page.map(b => `
+      <tr>
+        <td>
+          <div class="booking-id">${b._id.slice(-6).toUpperCase()}</div>
+          <div style="font-size:10px;color:#9ca3af;">${formatDate(b.createdAt)}</div>
+        </td>
+        <td>
+          <div class="customer-name">${esc(b.name)}</div>
+          <a class="customer-phone" href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a>
+        </td>
+        <td>
+          <div class="route"><strong>${esc(b.pickup)}</strong></div>
+          <div class="route">→ <strong>${esc(b.destination)}</strong></div>
+          ${b.tripType ? `<div style="font-size:11px;color:#9ca3af;">${esc(b.tripType)}</div>` : ''}
+        </td>
+        <td><span class="vehicle-tag">${esc(b.vehicle)}</span></td>
+        <td class="date-cell">${formatTravelDate(b.travelDate)}</td>
+        <td>
+          <select class="status-select" onchange="updateStatus('${b._id}', this.value)">
+            ${['pending','confirmed','completed','cancelled'].map(s =>
+              `<option value="${s}" ${b.status === s ? 'selected' : ''}>${cap(s)}</option>`
+            ).join('')}
+          </select>
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="viewDetail('${b._id}')">View</button>
+            <a href="tel:${esc(b.mobile)}" class="btn btn-primary btn-sm" style="text-decoration:none;">📞</a>
+            <a href="https://wa.me/91${esc(b.mobile).replace(/\D/g,'')}?text=${waMsg(b)}"
+               target="_blank" class="btn btn-sm" style="background:#25D366;color:white;text-decoration:none;">WA</a>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── Update status ───────────────────────────────────────────────────────────
+  async function updateStatus(id, status) {
+    try {
+      const r = await fetch(`${API}/api/bookings/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await r.json();
+      if (!data.success) throw new Error(data.message);
+      // Update local data
+      const b = allBookings.find(x => x._id === id);
+      if (b) b.status = status;
+      renderStats({ total: allBookings.length,
+        pending: allBookings.filter(x=>x.status==='pending').length,
+        confirmed: allBookings.filter(x=>x.status==='confirmed').length,
+        completed: allBookings.filter(x=>x.status==='completed').length,
+        cancelled: allBookings.filter(x=>x.status==='cancelled').length,
+      });
+      showToast(`Status updated to ${cap(status)}`, 'success');
+    } catch (err) {
+      showToast(`Error: ${err.message}`, 'error');
+      loadBookings(); // re-load to reset UI
+    }
+  }
+
+  // ── Detail modal ────────────────────────────────────────────────────────────
+  function viewDetail(id) {
+    const b = allBookings.find(x => x._id === id);
+    if (!b) return;
+    document.getElementById('modal-title').textContent = `Booking ${b._id.slice(-6).toUpperCase()}`;
+    document.getElementById('modal-body').innerHTML = `
+      ${row('Customer', esc(b.name))}
+      ${row('Mobile', `<a href="tel:${esc(b.mobile)}" style="color:var(--blue)">${esc(b.mobile)}</a>`)}
+      ${row('Pickup', esc(b.pickup))}
+      ${row('Destination', esc(b.destination))}
+      ${row('Vehicle', esc(b.vehicle))}
+      ${row('Trip Type', esc(b.tripType || '—'))}
+      ${row('Travel Date', `<strong>${formatTravelDate(b.travelDate)}</strong>`)}
+      ${row('Status', `<span class="badge ${b.status}">${cap(b.status)}</span>`)}
+      ${row('Notes', esc(b.message || '—'))}
+      ${row('Received', formatDate(b.createdAt))}
+    `;
+    document.getElementById('modal-actions').innerHTML = `
+      <a href="tel:${esc(b.mobile)}" class="btn btn-primary" style="text-decoration:none;flex:1;justify-content:center;">📞 Call Now</a>
+      <a href="https://wa.me/91${esc(b.mobile).replace(/\D/g,'')}?text=${waMsg(b)}" target="_blank"
+         class="btn" style="background:#25D366;color:white;text-decoration:none;flex:1;justify-content:center;">💬 WhatsApp</a>
+    `;
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function row(label, value) {
+    return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${value}</span></div>`;
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModalDirect();
+  }
+  function closeModalDirect() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+  function exportCSV() {
+    const data = filteredBookings.length ? filteredBookings : allBookings;
+    if (!data.length) { showToast('No bookings to export', 'error'); return; }
+    const headers = ['ID','Name','Mobile','Pickup','Destination','Vehicle','Trip Type','Travel Date','Status','Notes','Created At'];
+    const rows = data.map(b => [
+      b._id, b.name, b.mobile, b.pickup, b.destination, b.vehicle,
+      b.tripType||'', b.travelDate, b.status, b.message||'', b.createdAt
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tms-bookings-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${data.length} bookings`, 'success');
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+  function formatDate(s) {
+    if (!s) return '—';
+    return new Date(s).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+  function formatTravelDate(s) {
+    if (!s) return '—';
+    return new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  }
+  function waMsg(b) {
+    return encodeURIComponent(`Hi ${b.name}! This is TMS Travels confirming your booking:\n📍 ${b.pickup} → ${b.destination}\n🚗 ${b.vehicle}\n📅 ${b.travel_date}\n\nPlease let us know if you have any questions!`);
+  }
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    setTimeout(() => t.className = '', 3000);
+  }
+  function showLoading() {
+    document.getElementById('bookings-tbody').innerHTML =
+      `<tr class="state-row"><td colspan="7"><div class="spinner"></div>Loading…</td></tr>`;
+  }
+  function showError(msg) {
+    document.getElementById('bookings-tbody').innerHTML =
+      `<tr class="state-row"><td colspan="7" style="color:var(--red);">⚠️ ${esc(msg)}<br><br>Make sure the backend is running on port 5000.</td></tr>`;
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  checkHealth();
+  loadBookings();
+  setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
