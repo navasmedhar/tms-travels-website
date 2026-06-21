@@ -1,170 +1,92 @@
-const express = require("express");
-const rateLimit = require("express-rate-limit");
-const { body, param, query, validationResult } = require("express-validator");
-const Booking = require("../models/Booking");
-const { sendBookingEmails } = require("../email");
+const nodemailer = require("nodemailer");
 
-const router = express.Router();
-
-// ── Rate limiter — applies ONLY to creating new bookings (POST /) ─────────────
-// This stops customers from spamming the public booking form, without
-// affecting the admin dashboard's GET requests (list, stats, single booking).
-const bookingLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  message: { success: false, message: "Too many booking requests. Please call us at +91 7402233588." },
-});
-
-// ── Validation rules ──────────────────────────────────────────────────────────
-const bookingValidation = [
-  body("name").trim().notEmpty().withMessage("Name is required").isLength({ max: 100 }),
-  body("mobile")
-    .trim()
-    .notEmpty()
-    .withMessage("Mobile number is required")
-    .matches(/^[+\d\s\-()]{7,20}$/)
-    .withMessage("Invalid mobile number"),
-  body("pickup").trim().notEmpty().withMessage("Pickup location is required").isLength({ max: 200 }),
-  body("destination").trim().notEmpty().withMessage("Destination is required").isLength({ max: 200 }),
-  body("vehicle").trim().notEmpty().withMessage("Vehicle type is required"),
-  body("travel_date")
-    .notEmpty().withMessage("Travel date is required")
-    .isISO8601().withMessage("Invalid date format"),
-  body("trip_type").optional().trim().isLength({ max: 100 }),
-  body("message").optional().trim().isLength({ max: 1000 }),
-];
-
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(422).json({ success: false, errors: errors.array(), message: errors.array()[0].msg });
+function createTransport() {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("[EMAIL] EMAIL_USER or EMAIL_PASS not set – email sending disabled.");
+    return null;
   }
-  next();
-};
+ return nodemailer.createTransport({
+  service: "gmail",
+  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
+}
 
-// ── POST /api/bookings — Create booking ───────────────────────────────────────
-router.post("/", bookingLimiter, bookingValidation, validate, async (req, res, next) => {
+async function sendBookingEmails(booking) {
+  const transporter = createTransport();
+  if (!transporter) return;
+
+  const ownerEmail = process.env.OWNER_EMAIL || process.env.EMAIL_USER;
+  const travelDate = booking.travelDate
+    ? new Date(booking.travelDate).toLocaleDateString("en-IN")
+    : "—";
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
+      <div style="background:linear-gradient(135deg,#1a56db,#f97316);padding:16px 24px;border-radius:6px;margin-bottom:24px;">
+        <h1 style="color:white;margin:0;font-size:20px;">🚗 New Booking — TMS Travels</h1>
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#666;width:140px;">Customer</td><td style="padding:8px 0;font-weight:600;">${booking.name}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Mobile</td><td style="padding:8px 0;"><a href="tel:${booking.mobile}">${booking.mobile}</a></td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Pickup</td><td style="padding:8px 0;">${booking.pickup}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Destination</td><td style="padding:8px 0;">${booking.destination}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Vehicle</td><td style="padding:8px 0;">${booking.vehicle}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Trip Type</td><td style="padding:8px 0;">${booking.tripType || "—"}</td></tr>
+        <tr><td style="padding:8px 0;color:#666;">Travel Date</td><td style="padding:8px 0;"><strong>${travelDate}</strong></td></tr>
+        ${booking.message ? `<tr><td style="padding:8px 0;color:#666;">Notes</td><td style="padding:8px 0;">${booking.message}</td></tr>` : ""}
+      </table>
+      <div style="margin-top:20px;padding:12px;background:#fff3e8;border-radius:6px;font-size:13px;color:#666;">
+        Booking ID: <strong>${booking._id}</strong>
+      </div>
+      <div style="margin-top:16px;">
+        <a href="tel:${booking.mobile}" style="display:inline-block;padding:10px 20px;background:#25D366;color:white;text-decoration:none;border-radius:6px;font-weight:600;">📞 Call Customer</a>
+      </div>
+    </div>
+  `;
+
   try {
-    const { name, mobile, pickup, destination, vehicle, trip_type, travel_date, message } = req.body;
-
-    const booking = await Booking.create({
-      name,
-      mobile,
-      pickup,
-      destination,
-      vehicle,
-      tripType: trip_type || "",
-      travelDate: new Date(travel_date),
-      message: message || "",
+    await transporter.sendMail({
+      from: `"TMS Travels Website" <${process.env.EMAIL_USER}>`,
+      to: ownerEmail,
+      subject: `🚗 New Booking: ${booking.name} → ${booking.destination} on ${travelDate}`,
+      html,
     });
+    console.log(`[EMAIL] Owner notified for booking ${booking._id}`);
+  } catch (err) {
+    console.error("[EMAIL] Failed:", err.message);
+  }
+}
 
-    // Send email notification (non-blocking)
-    sendBookingEmails(booking).catch(() => {});
+async function sendContactEmail(contact) {
+  const transporter = createTransport();
+  if (!transporter) return;
 
-    console.log(`[BOOKING] ✅ New booking ${booking._id} — ${name} (${mobile}) → ${destination} on ${travel_date}`);
+  const ownerEmail = process.env.OWNER_EMAIL || process.env.EMAIL_USER;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
+      <h2 style="color:#0d1b2a;">📩 New Contact Message — TMS Travels</h2>
+      <p><strong>From:</strong> ${contact.name}</p>
+      ${contact.email ? `<p><strong>Email:</strong> ${contact.email}</p>` : ""}
+      ${contact.mobile ? `<p><strong>Mobile:</strong> ${contact.mobile}</p>` : ""}
+      ${contact.subject ? `<p><strong>Subject:</strong> ${contact.subject}</p>` : ""}
+      <p><strong>Message:</strong></p>
+      <blockquote style="border-left:3px solid #f97316;margin:0;padding:12px 16px;background:#fff3e8;border-radius:0 6px 6px 0;">${contact.message}</blockquote>
+    </div>
+  `;
 
-    return res.status(201).json({
-      success: true,
-      message: "Booking received! Our team will contact you within 30 minutes.",
-      booking: {
-        id: booking._id,
-        name: booking.name,
-        mobile: booking.mobile,
-        destination: booking.destination,
-        travelDate: booking.travelDate,
-        status: booking.status,
-        createdAt: booking.createdAt,
-      },
+  try {
+    await transporter.sendMail({
+      from: `"TMS Travels Website" <${process.env.EMAIL_USER}>`,
+      to: ownerEmail,
+      subject: `📩 Contact: ${contact.name} — ${contact.subject || "No subject"}`,
+      html,
     });
   } catch (err) {
-    next(err);
+    console.error("[EMAIL] Contact email failed:", err.message);
   }
-});
+}
 
-// ── GET /api/bookings — List bookings ─────────────────────────────────────────
-router.get("/", async (req, res, next) => {
-  try {
-    const { status, date, page = 1, limit = 20 } = req.query;
-
-    const filter = {};
-    if (status) filter.status = status;
-    if (date) {
-      // Match bookings on a specific travel date (day range)
-      const start = new Date(date);
-      const end = new Date(date);
-      end.setDate(end.getDate() + 1);
-      filter.travelDate = { $gte: start, $lt: end };
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const [bookings, total] = await Promise.all([
-      Booking.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
-      Booking.countDocuments(filter),
-    ]);
-
-    return res.json({ success: true, total, page: parseInt(page), bookings });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ── GET /api/bookings/stats — Booking counts by status ────────────────────────
-router.get("/stats", async (req, res, next) => {
-  try {
-    const stats = await Booking.aggregate([
-      { $group: { _id: "$status", count: { $sum: 1 } } },
-    ]);
-    const result = { total: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
-    stats.forEach(({ _id, count }) => {
-      result[_id] = count;
-      result.total += count;
-    });
-    return res.json({ success: true, stats: result });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ── GET /api/bookings/:id — Get single booking ────────────────────────────────
-router.get("/:id", async (req, res, next) => {
-  try {
-    const booking = await Booking.findById(req.params.id).lean();
-    if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
-    return res.json({ success: true, booking });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ── PATCH /api/bookings/:id/status — Update status ───────────────────────────
-router.patch(
-  "/:id/status",
-  [body("status").isIn(["pending", "confirmed", "completed", "cancelled"]).withMessage("Invalid status")],
-  validate,
-  async (req, res, next) => {
-    try {
-      const booking = await Booking.findByIdAndUpdate(
-        req.params.id,
-        { status: req.body.status },
-        { new: true, runValidators: true }
-      );
-      if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
-      return res.json({ success: true, message: "Status updated", booking });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// ── DELETE /api/bookings/:id — Delete booking ─────────────────────────────────
-router.delete("/:id", async (req, res, next) => {
-  try {
-    const booking = await Booking.findByIdAndDelete(req.params.id);
-    if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
-    return res.json({ success: true, message: "Booking deleted" });
-  } catch (err) {
-    next(err);
-  }
-});
-
-module.exports = router;
+module.exports = { sendBookingEmails, sendContactEmail };
