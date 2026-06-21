@@ -181,6 +181,11 @@
     .badge.confirmed { background: #dcfce7; color: #15803d; }
     .badge.completed { background: #e0e7ff; color: #4338ca; }
     .badge.cancelled { background: #fee2e2; color: #b91c1c; }
+    .badge.approved  { background: #dcfce7; color: #15803d; }
+    .badge.rejected  { background: #fee2e2; color: #b91c1c; }
+
+    .review-text { font-size: 12px; color: var(--muted); max-width: 320px; }
+    .stars-cell { color: #f59e0b; font-size: 13px; white-space: nowrap; }
 
     /* Status select in table */
     .status-select {
@@ -271,6 +276,58 @@
       .toolbar { flex-direction: column; align-items: stretch; }
       .filter-group { justify-content: flex-start; }
     }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex; gap: 4px;
+      margin-bottom: 20px;
+      background: var(--card);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      width: fit-content;
+    }
+    .tab-btn {
+      padding: 8px 18px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: var(--blue);
+      color: white;
+    }
+    .tab-btn .count-pill {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.25);
+      font-size: 11px;
+    }
+    .tab-btn:not(.active) .count-pill {
+      background: var(--orange);
+      color: white;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Review card ── */
+    .review-row td { vertical-align: top; }
+    .review-text {
+      font-size: 13px; color: var(--dark);
+      max-width: 360px;
+      line-height: 1.5;
+    }
+    .review-stars { color: var(--yellow); font-size: 13px; letter-spacing: 1px; }
+    .review-actions { display: flex; gap: 6px; }
+    .btn-approve { background: var(--green); color: white; }
+    .btn-reject { background: var(--red); color: white; }
   </style>
 </head>
 <body>
@@ -318,50 +375,98 @@
     </div>
   </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <h2>📋 Bookings</h2>
-    <div class="filter-group">
-      <select id="filter-status" onchange="applyFilters()">
-        <option value="">All Statuses</option>
-        <option value="pending">Pending</option>
-        <option value="confirmed">Confirmed</option>
-        <option value="completed">Completed</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
-      <input type="date" id="filter-date" onchange="applyFilters()" title="Filter by travel date" />
-      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Clear</button>
-      <button class="btn btn-primary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+  <!-- View tabs -->
+  <div style="display:flex;gap:8px;margin-bottom:18px;">
+    <button class="btn btn-sm" id="tab-bookings" onclick="switchView('bookings')"
+      style="background:var(--blue);color:white;">📋 Bookings</button>
+    <button class="btn btn-ghost btn-sm" id="tab-reviews" onclick="switchView('reviews')">
+      ⭐ Reviews <span id="pending-review-count" style="display:none;margin-left:4px;background:var(--red);color:white;border-radius:10px;padding:1px 7px;font-size:11px;"></span>
+    </button>
+  </div>
+
+  <!-- ═══════════ BOOKINGS VIEW ═══════════ -->
+  <div id="view-bookings">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <h2>📋 Bookings</h2>
+      <div class="filter-group">
+        <select id="filter-status" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <input type="date" id="filter-date" onchange="applyFilters()" title="Filter by travel date" />
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Clear</button>
+        <button class="btn btn-primary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Customer</th>
+            <th>Route</th>
+            <th>Vehicle</th>
+            <th>Travel Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="bookings-tbody">
+          <tr class="state-row"><td colspan="7">
+            <div class="spinner"></div>
+            Loading bookings…
+          </td></tr>
+        </tbody>
+      </table>
+      <div class="pagination">
+        <span id="page-info">—</span>
+        <div class="page-btns">
+          <button class="btn btn-ghost btn-sm" id="btn-prev" onclick="changePage(-1)">← Prev</button>
+          <button class="btn btn-ghost btn-sm" id="btn-next" onclick="changePage(1)">Next →</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Table -->
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Customer</th>
-          <th>Route</th>
-          <th>Vehicle</th>
-          <th>Travel Date</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="bookings-tbody">
-        <tr class="state-row"><td colspan="7">
-          <div class="spinner"></div>
-          Loading bookings…
-        </td></tr>
-      </tbody>
-    </table>
-    <div class="pagination">
-      <span id="page-info">—</span>
-      <div class="page-btns">
-        <button class="btn btn-ghost btn-sm" id="btn-prev" onclick="changePage(-1)">← Prev</button>
-        <button class="btn btn-ghost btn-sm" id="btn-next" onclick="changePage(1)">Next →</button>
+  <!-- ═══════════ REVIEWS VIEW ═══════════ -->
+  <div id="view-reviews" style="display:none;">
+    <div class="toolbar">
+      <h2>⭐ Customer Reviews</h2>
+      <div class="filter-group">
+        <select id="filter-review-status" onchange="applyReviewFilters()">
+          <option value="">All Statuses</option>
+          <option value="pending" selected>Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
       </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Customer</th>
+            <th>Rating</th>
+            <th>Review</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="reviews-tbody">
+          <tr class="state-row"><td colspan="6">
+            <div class="spinner"></div>
+            Loading reviews…
+          </td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -386,6 +491,8 @@
   let currentPage = 1;
   const perPage = 15;
   let filteredBookings = [];
+  let allReviews = [];
+  let currentView = 'bookings';
 
   // ── API Status ──────────────────────────────────────────────────────────────
   async function checkHealth() {
@@ -628,9 +735,127 @@
       `<tr class="state-row"><td colspan="7" style="color:var(--red);">⚠️ ${esc(msg)}<br><br>Make sure the backend is running.</td></tr>`;
   }
 
+  // ── View switching ──────────────────────────────────────────────────────────
+  function switchView(view) {
+    currentView = view;
+    const isBookings = view === 'bookings';
+    document.getElementById('view-bookings').style.display = isBookings ? '' : 'none';
+    document.getElementById('view-reviews').style.display = isBookings ? 'none' : '';
+
+    const tabB = document.getElementById('tab-bookings');
+    const tabR = document.getElementById('tab-reviews');
+    tabB.className = isBookings ? 'btn btn-sm' : 'btn btn-ghost btn-sm';
+    tabR.className = isBookings ? 'btn btn-ghost btn-sm' : 'btn btn-sm';
+    tabB.style.background = isBookings ? 'var(--blue)' : '';
+    tabB.style.color = isBookings ? 'white' : '';
+    tabR.style.background = isBookings ? '' : 'var(--blue)';
+    tabR.style.color = isBookings ? '' : 'white';
+
+    if (!isBookings) loadReviews();
+  }
+
+  // ── Load Reviews ────────────────────────────────────────────────────────────
+  async function loadReviews() {
+    document.getElementById('reviews-tbody').innerHTML =
+      `<tr class="state-row"><td colspan="6"><div class="spinner"></div>Loading…</td></tr>`;
+    try {
+      const r = await fetch(`${API}/api/reviews/all?limit=200`);
+      const data = await r.json();
+      if (!data.success) throw new Error(data.message);
+      allReviews = data.reviews;
+      updatePendingBadge();
+      applyReviewFilters();
+    } catch (err) {
+      document.getElementById('reviews-tbody').innerHTML =
+        `<tr class="state-row"><td colspan="6" style="color:var(--red);">⚠️ ${esc(err.message)}</td></tr>`;
+    }
+  }
+
+  function updatePendingBadge() {
+    const pendingCount = allReviews.filter(r => r.status === 'pending').length;
+    const badge = document.getElementById('pending-review-count');
+    if (pendingCount > 0) {
+      badge.textContent = pendingCount;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function applyReviewFilters() {
+    const status = document.getElementById('filter-review-status').value;
+    const filtered = status ? allReviews.filter(r => r.status === status) : allReviews;
+    renderReviewsTable(filtered);
+  }
+
+  function renderReviewsTable(reviews) {
+    const tbody = document.getElementById('reviews-tbody');
+    if (reviews.length === 0) {
+      tbody.innerHTML = `<tr class="state-row"><td colspan="6">No reviews found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = reviews.map(rv => `
+      <tr>
+        <td>
+          <div class="booking-id">${rv._id.slice(-6).toUpperCase()}</div>
+          <div style="font-size:10px;color:#9ca3af;">${formatDate(rv.createdAt)}</div>
+        </td>
+        <td>
+          <div class="customer-name">${esc(rv.name)}</div>
+          <div style="font-size:11px;color:#9ca3af;">${esc(rv.trip || '')}${rv.trip && rv.location ? ' · ' : ''}${esc(rv.location || '')}</div>
+        </td>
+        <td class="stars-cell">${'★'.repeat(rv.rating)}${'☆'.repeat(5 - rv.rating)}</td>
+        <td class="review-text">${esc(rv.review)}</td>
+        <td><span class="badge ${rv.status}">${cap(rv.status)}</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${rv.status !== 'approved' ? `<button class="btn btn-sm" style="background:var(--green);color:white;" onclick="setReviewStatus('${rv._id}','approved')">✓ Approve</button>` : ''}
+            ${rv.status !== 'rejected' ? `<button class="btn btn-sm" style="background:var(--red);color:white;" onclick="setReviewStatus('${rv._id}','rejected')">✕ Reject</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="deleteReview('${rv._id}')">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function setReviewStatus(id, status) {
+    try {
+      const r = await fetch(`${API}/api/reviews/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await r.json();
+      if (!data.success) throw new Error(data.message);
+      const rv = allReviews.find(x => x._id === id);
+      if (rv) rv.status = status;
+      updatePendingBadge();
+      applyReviewFilters();
+      showToast(`Review ${status}`, 'success');
+    } catch (err) {
+      showToast(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async function deleteReview(id) {
+    if (!confirm('Delete this review permanently?')) return;
+    try {
+      const r = await fetch(`${API}/api/reviews/${id}`, { method: 'DELETE' });
+      const data = await r.json();
+      if (!data.success) throw new Error(data.message);
+      allReviews = allReviews.filter(x => x._id !== id);
+      updatePendingBadge();
+      applyReviewFilters();
+      showToast('Review deleted', 'success');
+    } catch (err) {
+      showToast(`Error: ${err.message}`, 'error');
+    }
+  }
+
   // ── Init ────────────────────────────────────────────────────────────────────
   checkHealth();
   loadBookings();
+  loadReviews(); // load in background so the pending badge shows even before switching tabs
   setInterval(checkHealth, 30000);
 </script>
 </body>
