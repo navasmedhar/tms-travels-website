@@ -9,6 +9,7 @@ import { Testimonials } from "./components/Testimonials";
 import { BookingForm } from "./components/BookingForm";
 import { Contact } from "./components/Contact";
 import { Footer } from "./components/Footer";
+import { ReviewForm } from "./components/ReviewForm";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <TourPackages />
       <WhyChooseUs />
       <Testimonials />
+      <ReviewForm />
       <BookingForm />
       <Contact />
       <Footer />
