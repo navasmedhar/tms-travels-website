@@ -442,7 +442,7 @@
     const date   = document.getElementById('filter-date').value;
     filteredBookings = allBookings.filter(b => {
       if (status && b.status !== status) return false;
-      if (date && b.travel_date !== date) return false;
+      if (date && b.travelDate && b.travelDate.slice(0, 10) !== date) return false;
       return true;
     });
     currentPage = 1;
@@ -608,10 +608,10 @@
   }
   function formatTravelDate(s) {
     if (!s) return '—';
-    return new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+    return new Date(s).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
   }
   function waMsg(b) {
-    return encodeURIComponent(`Hi ${b.name}! This is TMS Travels confirming your booking:\n📍 ${b.pickup} → ${b.destination}\n🚗 ${b.vehicle}\n📅 ${b.travel_date}\n\nPlease let us know if you have any questions!`);
+    return encodeURIComponent(`Hi ${b.name}! This is TMS Travels confirming your booking:\n📍 ${b.pickup} → ${b.destination}\n🚗 ${b.vehicle}\n📅 ${formatTravelDate(b.travelDate)}\n\nPlease let us know if you have any questions!`);
   }
   function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
@@ -625,7 +625,7 @@
   }
   function showError(msg) {
     document.getElementById('bookings-tbody').innerHTML =
-      `<tr class="state-row"><td colspan="7" style="color:var(--red);">⚠️ ${esc(msg)}<br><br>Make sure the backend is running on port 5000.</td></tr>`;
+      `<tr class="state-row"><td colspan="7" style="color:var(--red);">⚠️ ${esc(msg)}<br><br>Make sure the backend is running.</td></tr>`;
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
