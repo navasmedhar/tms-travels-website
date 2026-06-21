@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X, Phone, MapPin } from "lucide-react";
-import tmsLogo from "../../imports/WhatsApp_Image_2026-06-13_at_4.10.35_PM.jpeg";
+import tmsLogo from "../../imports/tms-logo.jpeg";
 
 const navLinks = [
   { label: "Home", href: "#home" },
