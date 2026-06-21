@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X, Phone, MapPin } from "lucide-react";
 import tmsLogo from "../../imports/tms-logo.jpeg";
-
 const navLinks = [
   { label: "Home", href: "#home" },
   { label: "About", href: "#about" },
@@ -55,8 +54,7 @@ export function Navbar() {
           <img
             src={tmsLogo}
             alt="TMS Travels logo"
-            className="w-12 h-12 object-contain"
-            style={{ mixBlendMode: "multiply" }}
+            className="w-12 h-12 object-cover rounded-2xl shadow-sm"
           />
           <div>
             <div
