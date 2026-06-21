@@ -9,6 +9,7 @@ const errorHandler = require("./middleware/errorHandler");
 
 const bookingsRouter = require("./routes/bookings");
 const contactRouter  = require("./routes/contact");
+const reviewsRouter  = require("./routes/reviews");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -43,8 +44,9 @@ app.use(rateLimit({
   message: { success: false, message: "Too many requests. Please try again in 15 minutes." },
 }));
 
-// NOTE: bookingLimiter moved into routes/bookings.js and applied ONLY to the
-// POST "/" (create booking) route — so admin GET requests are never rate-limited.
+// NOTE: bookingLimiter lives in routes/bookings.js, applied ONLY to POST "/"
+// NOTE: reviewLimiter lives in routes/reviews.js, applied ONLY to POST "/"
+// This keeps admin GET requests free from rate-limit interference.
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10kb" }));
@@ -63,6 +65,7 @@ app.get("/admin", (_req, res) => {
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/contact",  contactRouter);
+app.use("/api/reviews",  reviewsRouter);
 
 // Health check
 app.get("/api/health", (_req, res) => {
