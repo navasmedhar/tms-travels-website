@@ -1,4 +1,5 @@
 import { Phone, Mail, MapPin, ArrowRight } from "lucide-react";
+import tmsLogo from "../../imports/tms-logo.jpeg";
 
 const quickLinks = [
   { label: "Home", href: "#home" },
@@ -52,10 +53,11 @@ export function Footer() {
           {/* Brand column */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #1a56db, #f97316)" }}>
-                <span className="text-white font-bold text-sm">TMS</span>
-              </div>
+              <img
+                src={tmsLogo}
+                alt="TMS Travels logo"
+                className="w-10 h-10 rounded-xl object-cover"
+              />
               <div>
                 <div className="text-white font-bold">TMS Travels</div>
                 <div className="text-xs" style={{ color: "#f97316" }}>Salem, Tamil Nadu</div>

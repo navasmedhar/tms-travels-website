@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import tmsLogo from "../../imports/tms-logo.jpeg";
 
 export function Contact() {
   return (
@@ -118,10 +119,11 @@ export function Contact() {
           >
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #1a56db, #f97316)" }}>
-                  <span className="text-white font-bold text-xs">TMS</span>
-                </div>
+                <img
+                  src={tmsLogo}
+                  alt="TMS Travels logo"
+                  className="w-10 h-10 rounded-xl object-cover"
+                />
                 <div>
                   <div className="font-bold text-[#0d1b2a]">TMS Travels</div>
                   <div className="text-xs text-[#f97316]">Safe · Comfortable · Affordable</div>
